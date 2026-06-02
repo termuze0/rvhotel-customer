@@ -50,20 +50,34 @@ class AuthController extends Controller
     }
 
     public function login(Request $request)
-    {
-        $user = User::where('email', $request->email)->first();
+{
+    $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
-
-        // Load the relevant profile based on role
-        $profile = ($user->role === 'hotel') ? $user->hotelProfile : $user->customerProfile;
-
+    if (!$user || !Hash::check($request->password, $user->password)) {
         return response()->json([
-            'token' => $user->createToken('api_token')->plainTextToken,
-            'role' => $user->role,
-            'profile' => $profile
-        ]);
+            'message' => 'Unauthorized'
+        ], 401);
     }
+
+    $profile = $user->role === 'hotel'
+        ? $user->hotelProfile
+        : $user->customerProfile;
+
+    return response()->json([
+        'token' => $user->createToken('api_token')->plainTextToken,
+        'role' => $user->role,
+        'profile' => [
+            'id' => $profile->id,
+            'user_id' => $profile->user_id,
+            'first_name' => $profile->first_name,
+            'last_name' => $profile->last_name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'avatar' => $profile->avatar,
+            'loyalty_pts' => $profile->loyalty_pts,
+            'created_at' => $profile->created_at,
+            'updated_at' => $profile->updated_at,
+        ]
+    ]);
+}
 }
