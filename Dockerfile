@@ -31,10 +31,10 @@ WORKDIR /var/www
 # Copy project files
 COPY . .
 
-# Install dependencies (NO cache tricks here to avoid 500 errors)
 RUN composer install --no-dev --optimize-autoloader
 
-# Fix storage permissions (important for Laravel)
+RUN php artisan storage:link || true
+
 RUN chmod -R 775 storage bootstrap/cache || true
 
 # Expose Render port

@@ -80,4 +80,77 @@ class AuthController extends Controller
         ]
     ]);
 }
+
+public function updateProfile(Request $request)
+{
+    $user = $request->user();
+
+    if ($user->role !== 'customer') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Only customers can update this profile'
+        ], 403);
+    }
+
+    $validator = Validator::make($request->all(), [
+        'first_name' => 'nullable|string|max:100',
+        'last_name'  => 'nullable|string|max:100',
+        'phone'      => 'nullable|string|unique:users,phone,' . $user->id,
+        'avatar'     => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'errors' => $validator->errors()
+        ], 422);
+    }
+
+    $profile = $user->customerProfile;
+
+    // Update user table
+    if ($request->filled('phone')) {
+        $user->phone = $request->phone;
+        $user->save();
+    }
+
+    // Update profile table
+    if ($request->filled('first_name')) {
+        $profile->first_name = $request->first_name;
+    }
+
+    if ($request->filled('last_name')) {
+        $profile->last_name = $request->last_name;
+    }
+
+    // Upload avatar
+    if ($request->hasFile('avatar')) {
+
+        // delete old image
+        if ($profile->avatar &&
+            Storage::disk('public')->exists($profile->avatar)) {
+            Storage::disk('public')->delete($profile->avatar);
+        }
+
+        $path = $request->file('avatar')
+            ->store('avatars', 'public');
+
+        $profile->avatar = $path;
+    }
+
+    $profile->save();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Profile updated successfully',
+        'data' => [
+            'first_name' => $profile->first_name,
+            'last_name' => $profile->last_name,
+            'phone' => $user->phone,
+            'avatar' => $profile->avatar
+                ? asset('storage/' . $profile->avatar)
+                : null,
+        ]
+    ]);
+}
 }
