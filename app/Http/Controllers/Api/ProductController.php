@@ -106,13 +106,15 @@ class ProductController extends Controller
     }
 
     // Create new product (Hotel only)
-    public function store(Request $request)
+   public function store(Request $request)
 {
     $request->validate([
-        'name' => 'required',
-        'price' => 'required',
-        'category' => 'required',
-        'preparation_time' => 'required'
+        'name' => 'required|string|max:255',
+        'price' => 'required|numeric|min:0',
+        'category' => 'required|string|max:100',
+        'preparation_time' => 'required|integer|min:1',
+        'description' => 'nullable|string',
+        'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048'
     ]);
 
     $user = $request->user();
@@ -123,19 +125,28 @@ class ProductController extends Controller
         ], 404);
     }
 
+    $imagePath = null;
+
+    if ($request->hasFile('image')) {
+        $imagePath = $request->file('image')->store('products', 'public');
+    }
+
     $product = Product::create([
         'hotel_id' => $user->hotelProfile->id,
         'name' => $request->name,
         'price' => $request->price,
         'category' => $request->category,
         'preparation_time' => $request->preparation_time,
-        'description' => $request->description
+        'description' => $request->description,
+        'image' => $imagePath,
+        'is_available' => true,
     ]);
 
     return response()->json([
         'success' => true,
-        'data' => $product
-    ]);
+        'data' => $product,
+        'message' => 'Product created successfully'
+    ], 201);
 }
     // Update product (Hotel only)
     public function update(Request $request, $id)
