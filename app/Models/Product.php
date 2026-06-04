@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Product extends Model
 {
     protected $table = 'products';
-    protected $appends = ['image_url'];
+    protected $appends = ['image_url','average_rating'];
 
     protected $fillable = [
         'hotel_id',
@@ -56,5 +56,9 @@ class Product extends Model
         : null;
 }
 
+public function getAverageRatingAttribute()
+{
+    return round($this->reviews()->avg('rating') ?? 0, 1);
+}
 }
 

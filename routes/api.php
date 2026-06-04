@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\HotelController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\ReviewController; 
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -17,6 +18,14 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/update', [AuthController::class, 'updateProfile']);
     Route::post('/profile/me', [AuthController::class, 'showProfile']);
+
+    Route::post('/reviews', [ReviewController::class, 'store']);
+
+    Route::put('/reviews/{review}', [ReviewController::class, 'update']);
+
+    Route::delete('/reviews/{review}', [ReviewController::class, 'destroy']);
+
+
 });
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -43,7 +52,8 @@ Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/featured', [ProductController::class, 'getFeatured']);
 Route::get('/products/categories', [ProductController::class, 'getCategories']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
-
+Route::get('/products/{product}/reviews', [ReviewController::class, 'index']);
+Route::get('/reviews/{review}', [ReviewController::class, 'show']);
 
 // Hotel product management routes (only hotel users)
 Route::middleware(['auth:sanctum', 'role:hotel'])->prefix('hotel')->group(function () {
