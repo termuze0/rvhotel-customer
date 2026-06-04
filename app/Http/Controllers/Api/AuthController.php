@@ -4,7 +4,7 @@ use App\Http\Controllers\Controller;
 use App\Models\{User, CustomerProfile, HotelProfile};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Hash, DB, Validator};
-
+use Illuminate\Support\Facades\Storage;
 class AuthController extends Controller
 {
     public function register(Request $request)
