@@ -153,4 +153,61 @@ public function updateProfile(Request $request)
         ]
     ]);
 }
+public function showProfile(Request $request)
+{
+    $user = $request->user();
+
+    if ($user->role === 'customer') {
+
+        $profile = $user->customerProfile;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $profile->id,
+                'user_id' => $profile->user_id,
+                'role' => 'customer',
+                'first_name' => $profile->first_name,
+                'last_name' => $profile->last_name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'avatar' => $profile->avatar
+                    ? asset('storage/' . $profile->avatar)
+                    : null,
+                'loyalty_pts' => $profile->loyalty_pts,
+                'created_at' => $profile->created_at,
+                'updated_at' => $profile->updated_at,
+            ]
+        ]);
+    }
+
+    if ($user->role === 'hotel') {
+
+        $profile = $user->hotelProfile;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $profile->id,
+                'user_id' => $profile->user_id,
+                'role' => 'hotel',
+                'hotel_name' => $profile->hotel_name,
+                'address' => $profile->address,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'avatar' => $profile->avatar
+                    ? asset('storage/' . $profile->avatar)
+                    : null,
+                'created_at' => $profile->created_at,
+                'updated_at' => $profile->updated_at,
+            ]
+        ]);
+    }
+
+    return response()->json([
+        'success' => false,
+        'message' => 'Profile not found'
+    ], 404);
+}
+
 }
