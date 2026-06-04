@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Product extends Model
 {
     protected $table = 'products';
+    protected $appends = ['image_url'];
 
     protected $fillable = [
         'hotel_id',
@@ -48,4 +49,12 @@ class Product extends Model
     {
         return $query->where('is_featured', true);
     }
+    public function getImageUrlAttribute()
+{
+    return $this->image
+        ? asset('storage/' . $this->image)
+        : null;
 }
+
+}
+
