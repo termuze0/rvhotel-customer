@@ -55,15 +55,17 @@ Route::get('/products/categories', [ProductController::class, 'getCategories']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::get('/products/{product}/reviews', [ReviewController::class, 'index']);
 Route::get('/reviews/{review}', [ReviewController::class, 'show']);
+
 Route::get('/product-image/{filename}', function ($filename) {
     $path = storage_path("app/public/products/$filename");
 
-    if (!file_exists($path)) {
-        abort(404);
-    }
-
-    return response()->file($path);
+    return response()->json([
+        'exists' => file_exists($path),
+        'path' => $path,
+    ]);
 });
+
+
 // Hotel product management routes (only hotel users)
 Route::middleware(['auth:sanctum', 'role:hotel'])->prefix('hotel')->group(function () {
     Route::get('/products', [ProductController::class, 'myProducts']);  // View my products
