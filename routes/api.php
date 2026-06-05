@@ -63,8 +63,7 @@ Route::get('/product-image/{filename}', function ($filename) {
         'exists' => file_exists($path),
         'path' => $path,
     ]);
-});
-
+})->where('filename', '.*');
 
 // Hotel product management routes (only hotel users)
 Route::middleware(['auth:sanctum', 'role:hotel'])->prefix('hotel')->group(function () {
