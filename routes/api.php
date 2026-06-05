@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\HotelController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ReviewController; 
+use App\Http\Controllers\Api\PaymentController; 
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -80,7 +81,8 @@ Route::middleware(['auth:sanctum', 'role:customer'])->group(function () {
 
     // Create order
     Route::post('/orders', [OrderController::class, 'store']);
-
+Route::post('/orders/{id}/pay', [PaymentController::class, 'pay']);
+Route::post('/payment/notify', [PaymentController::class, 'webhook']);
     // My orders
     Route::get('/orders/my', [OrderController::class, 'myOrders']);
 

@@ -80,17 +80,22 @@ class OrderController extends Controller
         $totalAmount = $subtotal + $deliveryFee;
 
         $order = Order::create([
-            'order_number' => 'ORD-' . strtoupper(Str::random(10)),
-            'customer_id' => $user->id,
-            'hotel_id' => $request->hotel_id,
-            'status' => 'pending',
-            'subtotal' => $subtotal,
-            'delivery_fee' => $deliveryFee,
-            'total' => $totalAmount,
-            'delivery_address' => $request->delivery_address,
-            'customer_phone' => $request->customer_phone,
-            'special_instructions' => $request->special_instructions,
-        ]);
+    'order_number' => 'ORD-' . strtoupper(Str::random(10)),
+    'customer_id' => $user->id,
+    'hotel_id' => $request->hotel_id,
+    'status' => 'pending',
+
+    'payment_method' => 'telebirr',
+    'payment_status' => 'pending',
+
+    'subtotal' => $subtotal,
+    'delivery_fee' => $deliveryFee,
+    'total' => $totalAmount,
+
+    'delivery_address' => $request->delivery_address,
+    'customer_phone' => $request->customer_phone,
+    'special_instructions' => $request->special_instructions,
+]);
 
         foreach ($orderItems as $item) {
             OrderItem::create([
