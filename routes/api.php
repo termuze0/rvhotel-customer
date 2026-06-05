@@ -28,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 });
 
+
 Route::middleware('auth:sanctum')->group(function () {
     // Customer Only
     Route::middleware('role:customer')->group(function () {
@@ -54,7 +55,15 @@ Route::get('/products/categories', [ProductController::class, 'getCategories']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::get('/products/{product}/reviews', [ReviewController::class, 'index']);
 Route::get('/reviews/{review}', [ReviewController::class, 'show']);
+Route::get('/product-image/{filename}', function ($filename) {
+    $path = storage_path("app/public/products/$filename");
 
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path);
+});
 // Hotel product management routes (only hotel users)
 Route::middleware(['auth:sanctum', 'role:hotel'])->prefix('hotel')->group(function () {
     Route::get('/products', [ProductController::class, 'myProducts']);  // View my products
