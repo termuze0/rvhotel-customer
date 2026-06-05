@@ -5,8 +5,26 @@ use App\Models\{User, CustomerProfile, HotelProfile};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Hash, DB, Validator};
 use Illuminate\Support\Facades\Storage;
+use Cloudinary\Cloudinary;
+
 class AuthController extends Controller
 {
+    private function cloudinary()
+    {
+        return new Cloudinary(env('CLOUDINARY_URL'));
+    }
+
+    private function resolveAvatarUrl($avatar)
+    {
+        if (!$avatar) {
+            return null;
+        }
+
+        return preg_match('/^https?:\/\//', $avatar)
+            ? $avatar
+            : asset('storage/' . $avatar);
+    }
+
     public function register(Request $request)
     {
         $v = Validator::make($request->all(), [
@@ -50,49 +68,49 @@ class AuthController extends Controller
     }
 
     public function login(Request $request)
-{
-    $user = User::where('email', $request->email)->first();
+    {
+        $user = User::where('email', $request->email)->first();
 
-    if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        $profile = $user->role === 'hotel'
+            ? $user->hotelProfile
+            : $user->customerProfile;
+
         return response()->json([
-            'message' => 'Unauthorized'
-        ], 401);
+            'token' => $user->createToken('api_token')->plainTextToken,
+            'role' => $user->role,
+            'profile' => [
+                'id' => $profile->id,
+                'user_id' => $profile->user_id,
+                'first_name' => $profile->first_name,
+                'last_name' => $profile->last_name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'avatar' => $this->resolveAvatarUrl($profile->avatar),
+                'loyalty_pts' => $profile->loyalty_pts,
+                'created_at' => $profile->created_at,
+                'updated_at' => $profile->updated_at,
+            ]
+        ]);
     }
 
-    $profile = $user->role === 'hotel'
-        ? $user->hotelProfile
-        : $user->customerProfile;
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
 
-    return response()->json([
-        'token' => $user->createToken('api_token')->plainTextToken,
-        'role' => $user->role,
-        'profile' => [
-            'id' => $profile->id,
-            'user_id' => $profile->user_id,
-            'first_name' => $profile->first_name,
-            'last_name' => $profile->last_name,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'avatar' => $profile->avatar,
-            'loyalty_pts' => $profile->loyalty_pts,
-            'created_at' => $profile->created_at,
-            'updated_at' => $profile->updated_at,
-        ]
-    ]);
-}
+        if ($user->role !== 'customer') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only customers can update this profile'
+            ], 403);
+        }
 
-public function updateProfile(Request $request)
-{
-    $user = $request->user();
-
-    if ($user->role !== 'customer') {
-        return response()->json([
-            'success' => false,
-            'message' => 'Only customers can update this profile'
-        ], 403);
-    }
-
-    $validator = Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
         'first_name' => 'nullable|string|max:100',
         'last_name'  => 'nullable|string|max:100',
         'phone'      => 'nullable|string|unique:users,phone,' . $user->id,
@@ -126,16 +144,29 @@ public function updateProfile(Request $request)
     // Upload avatar
     if ($request->hasFile('avatar')) {
 
-        // delete old image
-        if ($profile->avatar &&
-            Storage::disk('public')->exists($profile->avatar)) {
+        if ($profile->cloudinary_public_id) {
+            try {
+                $this->cloudinary()
+                    ->uploadApi()
+                    ->destroy($profile->cloudinary_public_id);
+            } catch (\Exception $e) {
+                // ignore failures while deleting old Cloudinary image
+            }
+        } elseif ($profile->avatar && Storage::disk('public')->exists($profile->avatar)) {
             Storage::disk('public')->delete($profile->avatar);
         }
 
-        $path = $request->file('avatar')
-            ->store('avatars', 'public');
+        $result = $this->cloudinary()
+            ->uploadApi()
+            ->upload(
+                $request->file('avatar')->getRealPath(),
+                [
+                    'folder' => 'customer_avatars'
+                ]
+            );
 
-        $profile->avatar = $path;
+        $profile->avatar = $result['secure_url'];
+        $profile->cloudinary_public_id = $result['public_id'];
     }
 
     $profile->save();
@@ -147,9 +178,7 @@ public function updateProfile(Request $request)
             'first_name' => $profile->first_name,
             'last_name' => $profile->last_name,
             'phone' => $user->phone,
-            'avatar' => $profile->avatar
-                ? asset('storage/' . $profile->avatar)
-                : null,
+            'avatar' => $this->resolveAvatarUrl($profile->avatar),
         ]
     ]);
 }
@@ -171,9 +200,7 @@ public function showProfile(Request $request)
                 'last_name' => $profile->last_name,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'avatar' => $profile->avatar
-                    ? asset('storage/' . $profile->avatar)
-                    : null,
+                'avatar' => $this->resolveAvatarUrl($profile->avatar),
                 'loyalty_pts' => $profile->loyalty_pts,
                 'created_at' => $profile->created_at,
                 'updated_at' => $profile->updated_at,
@@ -195,9 +222,7 @@ public function showProfile(Request $request)
                 'address' => $profile->address,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'avatar' => $profile->avatar
-                    ? asset('storage/' . $profile->avatar)
-                    : null,
+                'avatar' => $this->resolveAvatarUrl($profile->avatar),
                 'created_at' => $profile->created_at,
                 'updated_at' => $profile->updated_at,
             ]

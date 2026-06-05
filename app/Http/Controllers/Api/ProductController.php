@@ -6,9 +6,15 @@ use App\Models\Hotel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Cloudinary\Cloudinary;
 
 class ProductController extends Controller
 {
+    private function cloudinary()
+{
+    return new Cloudinary(env('CLOUDINARY_URL'));
+}
+
     // Get all products (Public - for customers)
     public function index(Request $request)
     {
@@ -106,7 +112,7 @@ class ProductController extends Controller
     }
 
     // Create new product (Hotel only)
-   public function store(Request $request)
+ public function store(Request $request)
 {
     $request->validate([
         'name' => 'required|string|max:255',
@@ -125,10 +131,22 @@ class ProductController extends Controller
         ], 404);
     }
 
-    $imagePath = null;
+    $imageUrl = null;
+    $publicId = null;
 
     if ($request->hasFile('image')) {
-        $imagePath = $request->file('image')->store('products', 'public');
+
+        $result = $this->cloudinary()
+            ->uploadApi()
+            ->upload(
+                $request->file('image')->getRealPath(),
+                [
+                    'folder' => 'products'
+                ]
+            );
+
+        $imageUrl = $result['secure_url'];
+        $publicId = $result['public_id'];
     }
 
     $product = Product::create([
@@ -138,7 +156,8 @@ class ProductController extends Controller
         'category' => $request->category,
         'preparation_time' => $request->preparation_time,
         'description' => $request->description,
-        'image' => $imagePath,
+        'image' => $imageUrl,
+        'cloudinary_public_id' => $publicId,
         'is_available' => true,
     ]);
 
@@ -148,60 +167,83 @@ class ProductController extends Controller
         'message' => 'Product created successfully'
     ], 201);
 }
-    // Update product (Hotel only)
-    public function update(Request $request, $id)
-    {
-        $product = Product::findOrFail($id);
-        $user = $request->user();
 
-        // Check if product belongs to the hotel
-        if ($product->hotel_id !== $user->hotelProfile->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized - This product does not belong to your hotel'
-            ], 403);
-        }
+public function update(Request $request, $id)
+{
+    $product = Product::findOrFail($id);
+    $user = $request->user();
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'price' => 'sometimes|numeric|min:0',
-            'preparation_time' => 'sometimes|integer|min:1|max:180',
-            'category' => 'sometimes|string|max:100',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'is_available' => 'boolean',
-            'is_featured' => 'boolean',
-            'ingredients' => 'nullable|string',
-            'calories' => 'nullable|integer|min:0',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // Handle image upload
-        if ($request->hasFile('image')) {
-            // Delete old image
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
-            }
-            $imagePath = $request->file('image')->store('products', 'public');
-            $product->image = $imagePath;
-        }
-
-        // Update product fields
-        $product->fill($request->except('image'));
-        $product->save();
-
+    // Check ownership
+    if ($product->hotel_id !== $user->hotelProfile->id) {
         return response()->json([
-            'success' => true,
-            'data' => $product,
-            'message' => 'Product updated successfully'
-        ]);
+            'success' => false,
+            'message' => 'Unauthorized - This product does not belong to your hotel'
+        ], 403);
     }
+
+    $validator = Validator::make($request->all(), [
+        'name' => 'sometimes|string|max:255',
+        'description' => 'nullable|string|max:1000',
+        'price' => 'sometimes|numeric|min:0',
+        'preparation_time' => 'sometimes|integer|min:1|max:180',
+        'category' => 'sometimes|string|max:100',
+        'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        'is_available' => 'boolean',
+        'is_featured' => 'boolean',
+        'ingredients' => 'nullable|string',
+        'calories' => 'nullable|integer|min:0',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'errors' => $validator->errors()
+        ], 422);
+    }
+
+    // Upload new image if provided
+    if ($request->hasFile('image')) {
+
+        // Delete old Cloudinary image
+        if ($product->cloudinary_public_id) {
+            try {
+                $this->cloudinary()
+                    ->uploadApi()
+                    ->destroy($product->cloudinary_public_id);
+            } catch (\Exception $e) {
+                // Continue even if delete fails
+            }
+        }
+
+        // Upload new image
+        $result = $this->cloudinary()
+            ->uploadApi()
+            ->upload(
+                $request->file('image')->getRealPath(),
+                [
+                    'folder' => 'products'
+                ]
+            );
+
+        $product->image = $result['secure_url'];
+        $product->cloudinary_public_id = $result['public_id'];
+    }
+
+    // Update other fields
+    $product->fill(
+        $request->except([
+            'image'
+        ])
+    );
+
+    $product->save();
+
+    return response()->json([
+        'success' => true,
+        'data' => $product,
+        'message' => 'Product updated successfully'
+    ]);
+}
 
     // Delete product (Hotel only)
     public function destroy(Request $request, $id)
@@ -218,9 +260,9 @@ class ProductController extends Controller
         }
 
         // Delete image if exists
-        if ($product->image) {
-            Storage::disk('public')->delete($product->image);
-        }
+        if ($product->cloudinary_public_id) {
+    Cloudinary::destroy($product->cloudinary_public_id);
+}
         
         $product->delete();
 

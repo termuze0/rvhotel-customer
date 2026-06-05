@@ -76,12 +76,12 @@ Route::middleware(['auth:sanctum', 'role:hotel'])->prefix('hotel')->group(functi
     Route::patch('/products/{id}/toggle-featured', [ProductController::class, 'toggleFeatured']); // Toggle featured
 });
 
-
-Route::middleware(['auth:sanctum', 'role:customer'])->group(function () {
-
-    // Create order
+// Create order
     Route::post('/orders', [OrderController::class, 'store']);
 Route::post('/orders/{id}/pay', [PaymentController::class, 'pay']);
+Route::middleware(['auth:sanctum', 'role:customer'])->group(function () {
+
+    
 Route::post('/payment/notify', [PaymentController::class, 'webhook']);
     // My orders
     Route::get('/orders/my', [OrderController::class, 'myOrders']);

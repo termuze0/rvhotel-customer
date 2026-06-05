@@ -11,6 +11,7 @@ class CustomerProfile extends Model
         'first_name',
         'last_name',
         'avatar',
+        'cloudinary_public_id',
         'loyalty_pts'
     ];
 
