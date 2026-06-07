@@ -36,6 +36,13 @@ class OrderController extends Controller
 
         $user = $request->user();
 
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required to create orders'
+            ], 401);
+        }
+
         $subtotal = 0;
         $orderItems = [];
 
