@@ -74,6 +74,7 @@ Route::middleware(['auth:sanctum', 'role:hotel'])->prefix('hotel')->group(functi
     Route::delete('/products/{id}', [ProductController::class, 'destroy']); // Delete product
     Route::patch('/products/{id}/toggle-availability', [ProductController::class, 'toggleAvailability']); // Toggle available
     Route::patch('/products/{id}/toggle-featured', [ProductController::class, 'toggleFeatured']); // Toggle featured
+    Route::get('/reviews', [ReviewController::class, 'hotelReviews']); // Hotel can fetch all reviews across its products
 });
 
 // Create order

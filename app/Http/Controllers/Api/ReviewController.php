@@ -78,6 +78,35 @@ class ReviewController extends Controller
     }
 
     /**
+     * Get all reviews for the authenticated hotel
+     */
+    public function hotelReviews(Request $request)
+    {
+        $hotel = auth()->user()->hotelProfile;
+
+        if (!$hotel) {
+            return response()->json([
+                'message' => 'Hotel profile not found.'
+            ], 404);
+        }
+
+        $reviewsQuery = Review::whereHas('product', function ($query) use ($hotel) {
+            $query->where('hotel_id', $hotel->id);
+        });
+
+        $reviews = $reviewsQuery
+            ->with(['product', 'customer.user'])
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'reviews' => $reviews,
+            'average_rating' => round($reviewsQuery->avg('rating') ?? 0, 1),
+            'total_reviews' => $reviewsQuery->count(),
+        ]);
+    }
+
+    /**
      * Update review
      */
     public function update(Request $request, Review $review)
